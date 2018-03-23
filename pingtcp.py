@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/bin/python
 ######################################################################
 #
 # File: pingtcp.py
@@ -10,7 +10,8 @@
 #               TCP timeout scenario, and will also optionally check for
 #               a service banner(i.e. "OpenSSH").
 #
-# (c) Copyright 2007 Adam W. Dace.  All rights reserved.
+# Copyright (c) 2018, Adam W. Dace.  All Rights Reserved.
+# Please see the accompanying LICENSE file for license information.
 #
 ######################################################################
 
@@ -18,7 +19,7 @@
 """Application entry point for pingtcp."""
 
 # File version tag
-__version__ = '1.1'
+__version__ = '1.2.0'
 
 # Standard modules
 import getopt
@@ -90,7 +91,7 @@ pingtcp.py --banner=ESMTP --port=25 mailbox.somewhere.com
 
     version = """pingtcp.py v%s
 Application Layer-based TCP Ping Script
-(c) Copyright 2007 Adam W. Dace.  All rights reserved.
+(c) Copyright 2018 Adam W. Dace.  All rights reserved.
 ------------------------------------------------------
 """ % __version__
 
