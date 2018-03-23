@@ -15,7 +15,7 @@
 """Application entry point. """
 
 # File version tag
-__version__ = '1.1'
+__version__ = '1.1.0'
 
 # Standard modules
 import commands
