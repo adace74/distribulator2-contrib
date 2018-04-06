@@ -3,11 +3,10 @@
 #
 # File: sniper.py
 #
-# Description:  Small script that will, via shell commands,
-# search the process table and kill targets accordingly.
+# Description:  A small script that is similar to killnow,
+#               but with added features.
 #
-# Copyright (c) 2018, Adam W. Dace.  All Rights Reserved.
-# Please see the accompanying LICENSE file for license information.
+# (c) Copyright 2018 Adam W. Dace.  All rights reserved.
 #
 ######################################################################
 
@@ -15,11 +14,10 @@
 """Application entry point. """
 
 # File version tag
-__version__ = '1.2.0'
+__version__ = '1.2'
 
 # Standard modules
 import commands
-import exceptions
 import getopt
 import sys
 
@@ -30,13 +28,6 @@ import sys
 def main(argv):
     """Good old main."""
 
-    short_options = ['']
-    long_options = ['help',
-                    'test',
-                    'signal=',
-                    'version',
-                    '?']
-
     usage = """Usage: %s [OPTION] SEARCHSTRING
 
 This script attempts to locate a given process(or processes) within the
@@ -46,17 +37,18 @@ a given command will produce before running it.
 
 The available options are:
 
-    --help
+    -h / --help
     Prints this usage statement.
     OPTIONAL
 
-    --signal=SIGNAL
+    -s=SIGNAL / --signal=SIGNAL
     Specifies the signal we wish to send selected processes.
     Default: SIGKILL
     OPTIONAL
 
-    --test
-    Specifies we wish to know the results of our actions, instead of actually performing them.
+    -t / --test
+    Specifies we wish to know what the script would do,
+    instead of actually performing them.
     Default: False
     OPTIONAL
 
@@ -78,17 +70,26 @@ sniper.py EVILPROC
 
     version = """sinper.py v%s
 Sniper.  Processes check in.  They don't check out.
-Copyright (c) 2018, Adam W. Dace.  All Rights Reserved.
+(c) Copyright 2018 Adam W. Dace  All rights reserved.
 -----------------------------------------------------""" % __version__
 
 ######################################################################
 # Variable initialization.
 ######################################################################
 
-    _SearchPattern=''
-    _Seperator='--------------------------------------------------------------------------------'
-    _Signal='SIGKILL'
-    _TestMode=0
+    # Various variables.
+    search_pattern = ''
+    seperator = '---------------------------------------------------------------------------'
+    signal='SIGKILL'
+    is_test_mode=False
+
+    # Getopt variables.
+    short_options = 'hs:tv?'
+    long_options = ['help',
+                    'signal=',
+                    'test',
+                    'version',
+                    '?']
 
 ######################################################################
 # Main logic flow.
@@ -100,24 +101,20 @@ Copyright (c) 2018, Adam W. Dace.  All Rights Reserved.
 
         if len(optlist) > 0:
             for opt in optlist:
-                if (opt[0] == '--signal'):
-                    _Signal=opt[1]
-                elif (opt[0] == '--help'):
+                if (opt[0] in ('-s', '--signal')):
+                    signal=opt[1]
+                elif (opt[0] in ('-h', '-?', '--help', '--?')):
                     print(version)
                     print(usage)
                     sys.exit(0)
-                elif (opt[0] == '--test'):
-                    _TestMode=1
-                elif (opt[0] == '--version'):
+                elif (opt[0] in ('-t', '--test')):
+                    is_test_mode=1
+                elif (opt[0] in ('-v', '--version')):
                     print(version)
-                    sys.exit(0)
-                elif (opt[0] == '--?'):
-                    print(version)
-                    print(usage)
                     sys.exit(0)
 
         if len(args) > 0:
-            _SearchPattern = args[0]
+            search_pattern = args[0]
         else:
             raise RuntimeError
 
@@ -125,6 +122,7 @@ Copyright (c) 2018, Adam W. Dace.  All Rights Reserved.
         print(version)
         print("ERROR: Invalid argument or flag found.  Please check your syntax.")
         print("ERROR: Please run again with the --help flag for more information.")
+        print
         sys.exit(1)
 
     except getopt.GetoptError:
@@ -134,55 +132,55 @@ Copyright (c) 2018, Adam W. Dace.  All Rights Reserved.
         sys.exit(1)
 
     # Validate the signal we're sending actually exists.
-    _Status, _Output = commands.getstatusoutput("kill -l | grep " + _Signal)
+    status, output = commands.getstatusoutput("kill -l | grep " + signal)
 
-    if len(_Output) == 0:
-        print("ERROR: No matching signal found for string '" + _Signal + "'.  Perhaps a typo?  Exiting...")
+    if len(output) == 0:
+        print("ERROR: No matching signal found for string '" + signal + "'.  Perhaps a typo?  Exiting...")
         sys.exit(1)
 
     # The hunt begins!
-    _Status, _Output = commands.getstatusoutput("ps -ef | grep " + _SearchPattern + " | grep -v grep | grep -v sniper.py")
+    status, output = commands.getstatusoutput("ps -ef | grep " + search_pattern + " | grep -v grep | grep -v sniper.py")
 
-    if _Status != 0:
-        print("ERROR: No matching processes found for string '" + _SearchPattern + "'.  Exiting...") 
+    if status != 0:
+        print("ERROR: No matching processes found for string '" + search_pattern + "'.  Exiting...") 
         sys.exit(1)
 
     print("INFO:  Found at least one matching process, 'ps -ef' output follows...")
-    print("INFO:  " + _Seperator)
-    for _Line in _Output.split('\n'):
-        print("INFO:  " + _Line)
-    print("INFO:  " + _Seperator)
+    print("INFO:  " + seperator)
+    for line in output.split('\n'):
+        print("INFO:  " + line)
+    print("INFO:  " + seperator)
 
     # Gather target PID list.
-    _Status, _Output = commands.getstatusoutput("ps -ef | grep " + _SearchPattern + " | grep -v grep | grep -v sniper.py | awk ' { print $2 } ' | xargs echo")
+    status, output = commands.getstatusoutput("ps -ef | grep " + search_pattern + " | grep -v grep | grep -v sniper.py | awk ' { print $2 } ' | xargs echo")
 
-    if _Status != 0:
+    if status != 0:
         print("ERROR: Caught non-zero exit code from 'ps -ef'.  This shouldn't be possible!  Exiting...")
         sys.exit(2)
 
-    _KillCommand = "kill -s " + _Signal + " " + _Output
+    kill_command = "kill -s " + signal + " " + output
 
-    print("INFO:  Target Signal: |" + _Signal + "|") 
-    print("INFO:  Target PIDs:   |" + _Output + "|")
-    print("INFO:  Kill Cmd:      |" + _KillCommand + "|")
-    print("INFO:  " + _Seperator)
+    print("INFO:  Target Signal: |" + signal + "|") 
+    print("INFO:  Target PIDs:   |" + output + "|")
+    print("INFO:  Kill Cmd:      |" + kill_command + "|")
+    print("INFO:  " + seperator)
 
-    if (_TestMode):
+    if (is_test_mode):
         print("INFO:  Test mode confirmed.  Taking no real action, exiting...")
     else:
         print("INFO:  Sniper mode confirmed.  Sending signals...")
 
         # Exterminate!
-        _Status, _Output = commands.getstatusoutput(_KillCommand)
+        status, output = commands.getstatusoutput(kill_command)
 
         print
 
-        if _Status != 0:
+        if status != 0:
             print("ERROR: Caught non-zero exit code kill command.  Output follows...")
-            print("ERROR: " + _Seperator)
-            for _Line in _Output.split('\n'):
-                print("ERROR: " + _Line)
-            print("ERROR: " + _Seperator)
+            print("ERROR: " + seperator)
+            for line in output.split('\n'):
+                print("ERROR: " + line)
+            print("ERROR: " + seperator)
 
             sys.exit(2)
 
